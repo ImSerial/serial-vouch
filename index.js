@@ -363,15 +363,16 @@ client.on("interactionCreate", async (interaction) => {
       return interaction.reply({ content: "❌ Commande indisponible en DM.", flags: 64 });
     }
 
-    if (!isOwner(interaction.user.id)) {
-      return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
-    }
+    // Removed global owner check; now per command
 
     const vouchChannelId = getVouchChannelId(guildId);
     const logsChannelId = getLogsChannelId(guildId);
 
     /* ---------- /setchannelvouch ---------- */
     if (cmd === "setchannelvouch") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
       const ch = interaction.options.getChannel("salon");
 
@@ -394,6 +395,9 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /setlogs ---------- */
     if (cmd === "setlogs") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
       const ch = interaction.options.getChannel("salon");
 
@@ -416,10 +420,11 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /vouch ---------- */
     if (cmd === "vouch") {
+      // No owner check here; accessible to all
       await interaction.deferReply({ flags: 64 });
 
       if (!vouchChannelId) {
-        console.log("[VOUCH] ❌ vouchChannelId undefined");
+        console.log("[VOUCH] ❌ vouchChannelId ");
         return interaction.editReply("❌ Salon des vouches non défini. Utilise /setchannelvouch.");
       }
 
@@ -474,6 +479,9 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /fakevouch ---------- */
     if (cmd === "fakevouch") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
 
       const ms = parseTime(interaction.options.getString("time"));
@@ -532,13 +540,13 @@ client.on("interactionCreate", async (interaction) => {
           if (logsChannelId) {
             const logsChannel = interaction.guild.channels.cache.get(logsChannelId);
             if (logsChannel) {
-              const logEmbed = makeLogEmbed("VOUCH !", [
+              const logEmbed = makeLogEmbed("VOUCH", [
                 `Cible : <@${member.id}> (${member.id})`,
                 `Seller : <@${seller}> (${seller})`,
                 `Note : ${stars}/5`,
                 `Intervalle : ${Math.floor(ms / 1000)}s`
               ]);
-              logsChannel.send({ embeds: [logEmbed] }).catch((e) => {
+                            logsChannel.send({ embeds: [logEmbed] }).catch((e) => {
                 console.log("[LOGS] ❌ send fake log:", e?.message || e);
               });
             }
@@ -675,6 +683,9 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /bot-name ---------- */
     if (cmd === "bot-name") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
       const name = interaction.options.getString("name");
       console.log(`[BOT] setUsername -> ${name}`);
@@ -684,6 +695,9 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /bot-avatar ---------- */
     if (cmd === "bot-avatar") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
       const lien = interaction.options.getString("lien");
       console.log(`[BOT] setAvatar -> ${lien}`);
@@ -693,6 +707,9 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /bot-status ---------- */
     if (cmd === "bot-status") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
       const style = interaction.options.getString("style");
       console.log(`[BOT] setStatus -> ${style}`);
@@ -702,6 +719,9 @@ client.on("interactionCreate", async (interaction) => {
 
     /* ---------- /bot-activities ---------- */
     if (cmd === "bot-activities") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
       await interaction.deferReply({ flags: 64 });
       const type = interaction.options.getString("type");
       const description = interaction.options.getString("description");
