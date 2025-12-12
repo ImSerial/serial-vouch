@@ -164,10 +164,44 @@ function randomBrainrotPhrase() {
     "Legit",
     "Parfait",
     "Carré",
-    "Impeccable"
+    "Impeccable",
+
+    // ===== NOUVELLES PHRASES AJOUTÉES =====
+    "ty for the trade, super smooth fr",
+    "appreciate u guys, was fast & safe",
+    "legit mm, no stress at all",
+    "thanks for helping with my dragon trade, everything went clean",
+    "got my spider safely, tysm solvero",
+    "combo trade went perfect, thx mm",
+    "ngl I was scared but this mm is actually legit lol",
+    "quick n easy trade, appreciate it",
+    "thanks for the Halloween dragon, all smooth",
+    "trustworthy mm, ty for handling it",
+    "safe trade, tysm for the help",
+    "got my neon dragon delivered, all good",
+    "garbazilla trade done, appreciate u",
+    "esok trade went perfectly, ty guys",
+    "mutation trade was smooth asf thanks",
+    "chimpenzini trade safe, no issues ty",
+    "dragon for combo deal complete, ty for hosting",
+    "good mm, everything verified properly",
+    "fr this mm is solid, ty again",
+    "thanks solvero, trade went fast",
+    "just did my spider brainrot trade, all safe tysm",
+    "bro this was actually legit, ty for the help",
+    "big vouch, they handled my chocolate dragon trade perfectly",
+    "smooth esok delivery, appreciate u",
+    "trusted mm, thx for making it easy",
+    "ty for being patient w me lol, trade was good",
+    "neon dragon accepted and delivered safely ty",
+    "just finished my combo trade, 10/10",
+    "safe n quick, vouch for solvero mm",
+    "good communication, trade went fine ty"
   ];
+
   return phrases[Math.floor(Math.random() * phrases.length)];
 }
+
 
 async function getRandomMember(guild) {
   try {
@@ -769,3 +803,4 @@ client.login(process.env.TOKEN).then(() => {
 }).catch((e) => {
   console.error("[BOOT] ❌ login error:", e);
 });
+
