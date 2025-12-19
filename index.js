@@ -17,8 +17,8 @@ const Database = require("better-sqlite3");
 
 const OWNERS = [
   "212834472436039681",
-  "1133246357960921158",
-  "1401956357820649663"
+  "1450962706281660517",
+  "212834472436039681"
 ];
 
 const EMBED_COLOR = 0xFF0000;
@@ -73,6 +73,14 @@ db.prepare(`
   )
 `).run();
 
+/* ✅ AJOUT: rôle à donner après un vrai vouch */
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS vouch_role_config (
+    guild_id TEXT PRIMARY KEY,
+    role_id TEXT
+  )
+`).run();
+
 /* ================= CLIENT ================= */
 
 const client = new Client({
@@ -94,7 +102,17 @@ const getLogsChannelId = (guildId) =>
   db.prepare("SELECT channel_id FROM logs_config WHERE guild_id = ?")
     .get(guildId)?.channel_id;
 
-const randomOwner = () => OWNERS[Math.floor(Math.random() * OWNERS.length)];
+/* ✅ AJOUT: récupérer le rôle configuré */
+const getVouchRoleId = (guildId) =>
+  db.prepare("SELECT role_id FROM vouch_role_config WHERE guild_id = ?")
+    .get(guildId)?.role_id;
+
+/* ✅ FIX: évite les IDs vides -> plus de <@> */
+const randomOwner = () => {
+  const valid = OWNERS.filter((x) => typeof x === "string" && x.trim().length > 0);
+  if (!valid.length) return null;
+  return valid[Math.floor(Math.random() * valid.length)];
+};
 
 const randomStars = () => Math.floor(Math.random() * 3) + 3; // 3..5
 
@@ -202,7 +220,6 @@ function randomBrainrotPhrase() {
   return phrases[Math.floor(Math.random() * phrases.length)];
 }
 
-
 async function getRandomMember(guild) {
   try {
     // On évite le cache vide : fetch limité.
@@ -221,7 +238,6 @@ function makeLogEmbed(title, lines) {
     .setColor(EMBED_COLOR)
     .setDescription(
       `LOG — ${title}\n\n${lines.join("\n")}`
-      
     );
 }
 
@@ -243,6 +259,16 @@ const commands = [
     .addChannelOption(o =>
       o.setName("salon")
         .setDescription("Salon des logs")
+        .setRequired(true)
+    ),
+
+  /* ✅ AJOUT: /setrole role: */
+  new SlashCommandBuilder()
+    .setName("setrole")
+    .setDescription("Définir le rôle donné après un vouch réel")
+    .addRoleOption(o =>
+      o.setName("role")
+        .setDescription("Rôle à attribuer après un vouch réel")
         .setRequired(true)
     ),
 
@@ -397,10 +423,9 @@ client.on("interactionCreate", async (interaction) => {
       return interaction.reply({ content: "❌ Commande indisponible en DM.", flags: 64 });
     }
 
-    // Removed global owner check; now per command
-
     const vouchChannelId = getVouchChannelId(guildId);
     const logsChannelId = getLogsChannelId(guildId);
+    const vouchRoleId = getVouchRoleId(guildId);
 
     /* ---------- /setchannelvouch ---------- */
     if (cmd === "setchannelvouch") {
@@ -452,6 +477,33 @@ client.on("interactionCreate", async (interaction) => {
       });
     }
 
+    /* ✅ ---------- /setrole ---------- */
+    if (cmd === "setrole") {
+      if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: "❌ Accès refusé.", flags: 64 });
+      }
+      await interaction.deferReply({ flags: 64 });
+
+      const role = interaction.options.getRole("role");
+      if (!role) {
+        return interaction.editReply("❌ Rôle invalide.");
+      }
+
+      db.prepare(`
+        INSERT INTO vouch_role_config (guild_id, role_id)
+        VALUES (?, ?)
+        ON CONFLICT(guild_id) DO UPDATE SET role_id = excluded.role_id
+      `).run(guildId, role.id);
+
+      return interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(EMBED_COLOR)
+            .setDescription(`Rôle configuré → <@&${role.id}> (${role.id})`)
+        ]
+      });
+    }
+
     /* ---------- /vouch ---------- */
     if (cmd === "vouch") {
       // No owner check here; accessible to all
@@ -492,6 +544,23 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       await vouchChannel.send({ embeds: [vouchEmbed] });
+
+      /* ✅ AJOUT: donner le rôle après un VRAI vouch (pas fakevouch) */
+      if (vouchRoleId) {
+        try {
+          const member = await interaction.guild.members.fetch(interaction.user.id);
+          const role = interaction.guild.roles.cache.get(vouchRoleId);
+
+          if (!role) {
+            console.log(`[ROLE] ⚠️ role introuvable: ${vouchRoleId}`);
+          } else if (!member.roles.cache.has(role.id)) {
+            await member.roles.add(role);
+            console.log(`[ROLE] ✅ role ${role.id} ajouté à ${member.id}`);
+          }
+        } catch (e) {
+          console.log("[ROLE] ❌ add role error:", e?.message || e);
+        }
+      }
 
       if (logsChannelId) {
         const logsChannel = interaction.guild.channels.cache.get(logsChannelId);
@@ -547,6 +616,11 @@ client.on("interactionCreate", async (interaction) => {
           }
 
           const seller = randomOwner();
+          if (!seller) {
+            console.log("[FAKE] ❌ Aucun owner valide (liste OWNERS vide/incorrecte)");
+            return;
+          }
+
           const stars = randomStars();
           const desc = randomBrainrotPhrase();
           const now = Math.floor(Date.now() / 1000);
@@ -580,7 +654,7 @@ client.on("interactionCreate", async (interaction) => {
                 `Note : ${stars}/5`,
                 `Intervalle : ${Math.floor(ms / 1000)}s`
               ]);
-                            logsChannel.send({ embeds: [logEmbed] }).catch((e) => {
+              logsChannel.send({ embeds: [logEmbed] }).catch((e) => {
                 console.log("[LOGS] ❌ send fake log:", e?.message || e);
               });
             }
@@ -803,4 +877,3 @@ client.login(process.env.TOKEN).then(() => {
 }).catch((e) => {
   console.error("[BOOT] ❌ login error:", e);
 });
-
